@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 
 export default function App() {
   const [lines, setLines] = useState([]);
@@ -9,14 +9,36 @@ export default function App() {
   const [selectedLineIndex, setSelectedLineIndex] = useState(null);
   const [isResizeMode, setResizeMode] = useState(false);
   const [isMoveMode, setMoveMode] = useState(false);
+  const [isAddingPedestrian, setAddingPedestrian] = useState(false);
+  const [phases, setPhases] = useState([]);
+  const [selectedPhaseIndex, setSelectedPhaseIndex] = useState(null);
 
+  const handleDrawButtonClick = () => {
+    setEditMode(false);
+    setPoints([]);
+    setSelectedLine(null);
+    handleSelectLine(null);
+    handleListClick(null);
+    setMoveMode(false);
+    setResizeMode(false);
+    setAddingPedestrian(false);
+  };
+  const handleDeleteButtonClick = () => {
+    if (selectedLine !== null) {
+      const updatedLines = [...lines];
+      updatedLines.splice(selectedLine, 1);
+      setLines(updatedLines);
+      setSelectedLine(null);
+      setSelectedLineIndex(null);
+    }
+  };
   const handleResizeButtonClick = () => {
     setEditMode(true);
     setResizeMode(true);
     setPoints([]);
     setSelectedLine(null);
     setSelectedLineIndex(null);
-    setMoveMode(false)
+    setMoveMode(false);
   };
   const handleMoveButtonClick = () => {
     setEditMode(true);
@@ -24,15 +46,36 @@ export default function App() {
     setPoints([]);
     setSelectedLine(null);
     setSelectedLineIndex(null);
-    setMoveMode(true)
+    setMoveMode(true);
   };
+  const handlePedestrianButtonCLick = () => {
+    setEditMode(false);
+    setPoints([]);
+    setSelectedLine(null);
+    handleSelectLine(null);
+    handleListClick(null);
+    setMoveMode(false);
+    setResizeMode(false);
+    setAddingPedestrian(true);
+  };
+
+  const handlePhaseButtonClick = () => {
+    const newPhase = {
+      lines: [],
+      name: `${phases.length + 1}. Faz`, // You can customize the naming
+    };
+    setPhases((prevPhases) => [...prevPhases, newPhase]);
+  };
+
   const handleListClick = (index) => {
     setSelectedLineIndex(index);
   };
 
   const handleMouseDown = (event) => {
-    const localX = event.clientX - event.currentTarget.getBoundingClientRect().left;
-    const localY = event.clientY - event.currentTarget.getBoundingClientRect().top;
+    const localX =
+      event.clientX - event.currentTarget.getBoundingClientRect().left;
+    const localY =
+      event.clientY - event.currentTarget.getBoundingClientRect().top;
 
     if (!isEditMode) {
       setPoints((prevPoints) => [...prevPoints, { x: localX, y: localY }]);
@@ -43,7 +86,7 @@ export default function App() {
   };
 
   const handleKeyDown = (event) => {
-    if (event.key === 'Enter') {
+    if (event.key === "Enter") {
       if (points.length >= 2) {
         const newLine = { points: [...points] };
         setLines((prevLines) => [...prevLines, newLine]);
@@ -81,7 +124,6 @@ export default function App() {
     return Math.sqrt(dx * dx + dy * dy);
   };
 
-
   const handleSelectLine = (x, y) => {
     const clickedLine = lines.findIndex((line) => {
       for (let i = 0; i < line.points.length - 1; i++) {
@@ -100,7 +142,7 @@ export default function App() {
 
     if (clickedLine !== -1) {
       setSelectedLine(clickedLine);
-      handleListClick(clickedLine)
+      handleListClick(clickedLine);
     }
   };
 
@@ -111,29 +153,12 @@ export default function App() {
   //   setSelectedLine(null)
   // };
 
-  const handleDeleteButtonClick = () => {
-    if (selectedLine !== null) {
-      const updatedLines = [...lines];
-      updatedLines.splice(selectedLine, 1);
-      setLines(updatedLines);
-      setSelectedLine(null);
-      setSelectedLineIndex(null)
-    }
-  };
-
-  const handleDrawButtonClick = () => {
-    setEditMode(false);
-    setPoints([]);
-    setSelectedLine(null)
-    handleSelectLine(null)
-    handleListClick(null)
-    setMoveMode(false)
-    setResizeMode(false)
-  };
   const handleMouseMove = (event) => {
     if (isEditMode && selectedLine !== null && dragStartPoint) {
-      const localX = event.clientX - event.currentTarget.getBoundingClientRect().left;
-      const localY = event.clientY - event.currentTarget.getBoundingClientRect().top;
+      const localX =
+        event.clientX - event.currentTarget.getBoundingClientRect().left;
+      const localY =
+        event.clientY - event.currentTarget.getBoundingClientRect().top;
 
       const updatedLines = [...lines];
       const updatedLine = { ...updatedLines[selectedLine] };
@@ -170,8 +195,19 @@ export default function App() {
   };
 
   useEffect(() => {
-    console.log('Çizgi konumları', lines);
+    console.log("Çizgi konumları", lines);
   }, [lines]);
+
+  useEffect(() => {
+    if (isAddingPedestrian && points.length === 2) {
+      const newPedestrianLine = {
+        points: [...points],
+        type: "pedestrian",
+      };
+      setLines((prevLines) => [...prevLines, newPedestrianLine]);
+      setPoints([]);
+    }
+  }, [isAddingPedestrian, points]);
 
   const drawLines = () => {
     const drawnLines = [];
@@ -180,55 +216,165 @@ export default function App() {
       const linePoints = line.points;
 
       if (linePoints.length === 2) {
-        // Sadece iki nokta varsa düz çizgi çiz
-        drawnLines.push(
-          <line
-            key={`line${i}`}
-            x1={linePoints[0].x}
-            y1={linePoints[0].y}
-            x2={linePoints[1].x}
-            y2={linePoints[1].y}
-            stroke={i === selectedLine ? 'red' : 'black'}
-            strokeWidth={3}
-            markerEnd="url(#arrow)"
+        if (line.type === "pedestrian") {
+          drawnLines.push(
+            <path
+              key={`line${i}`}
+              d={`M${linePoints[0].x} ${linePoints[0].y} L${linePoints[1].x} ${linePoints[1].y}`}
+              fill="transparent"
+              stroke={i === selectedLine ? "red" : "gray"}
+              strokeWidth={3}
+            />
+          );
 
-          />
-        );
-        drawnLines.push(
-          <circle
-            key={`startPoint${i}`}
-            cx={linePoints[0].x}
-            cy={linePoints[0].y}
-            r={3}
-            fill="red"
-          />
-        );
+          const rectLength = Math.hypot(
+            linePoints[1].x - linePoints[0].x,
+            linePoints[1].y - linePoints[0].y
+          );
+          const rectWidth = 20;
+          const rectHeight = 20;
+          const rectColor = "gray";
+
+          const angle = Math.atan2(
+            linePoints[1].y - linePoints[0].y,
+            linePoints[1].x - linePoints[0].x
+          );
+
+          const middleX =
+            (linePoints[0].x + linePoints[1].x) / 2 - rectLength / 2;
+          const middleY =
+            (linePoints[0].y + linePoints[1].y) / 2 - rectWidth / 2;
+
+          drawnLines.push(
+            <rect
+              key={`rect${i}`}
+              x={middleX}
+              y={middleY}
+              width={rectLength}
+              height={rectHeight}
+              fill={rectColor}
+              stroke={i === selectedLine ? "red" : "transparent"}
+              strokeWidth={2}
+              transform={`rotate(${angle * (180 / Math.PI)},${
+                middleX + rectLength / 2
+              },${middleY + rectWidth / 2})`}
+            />
+          );
+
+          drawnLines.push(
+            <g key={`trafficLightGroup${i}`}>
+              <rect
+                x={linePoints[0].x - 48 / 2}
+                y={linePoints[0].y - 48 / 2}
+                width={48}
+                height={48}
+                fill="transparent"
+                stroke={i === selectedLine ? "red" : "transparent"}
+                strokeWidth={2}
+                rx={4}
+              />
+              <image
+                href="https://www.isgtabelam.com/UserFiles/Fotograflar/org/13221-isgt1820-png-isgt1820.png"
+                x={linePoints[0].x - 45 / 2}
+                y={linePoints[0].y - 45 / 2}
+                width={45}
+                height={45}
+              />
+            </g>
+          );
+        } else {
+          drawnLines.push(
+            <line
+              key={`line${i}`}
+              x1={linePoints[0].x}
+              y1={linePoints[0].y}
+              x2={linePoints[1].x}
+              y2={linePoints[1].y}
+              stroke={i === selectedLine ? "red" : "black"}
+              strokeWidth={3}
+              markerEnd="url(#arrow)"
+            />
+          );
+          drawnLines.push(
+            // <circle
+            //   key={`startPoint${i}`}
+            //   cx={linePoints[0].x}
+            //   cy={linePoints[0].y}
+            //   r={3}
+            //   fill="red"
+            // />
+            <g key={`lineGroup${i}`}>
+              <rect
+                x={linePoints[0].x - 48 / 2}
+                y={linePoints[0].y - 48 / 2}
+                width={48}
+                height={48}
+                fill="transparent"
+                stroke={i === selectedLine ? "red" : "transparent"}
+                strokeWidth={2}
+                rx={4}
+              />
+              <image
+                href="https://freesvg.org/img/1532452918.png"
+                x={linePoints[0].x - 48 / 2}
+                y={linePoints[0].y - 48 / 2}
+                width={48}
+                height={48}
+              />
+            </g>
+          );
+        }
       } else if (linePoints.length >= 3) {
-        const pathData = `M ${linePoints[0].x} ${linePoints[0].y} C ${linePoints[1].x} ${linePoints[1].y}, ${linePoints[2].x} ${linePoints[2].y}, ${linePoints.slice(linePoints.length - 1).map(point => `${point.x} ${point.y}`).join(' ')}`;
+        const pathData = `M ${linePoints[0].x} ${linePoints[0].y} C ${
+          linePoints[1].x
+        } ${linePoints[1].y}, ${linePoints[2].x} ${
+          linePoints[2].y
+        }, ${linePoints
+          .slice(linePoints.length - 1)
+          .map((point) => `${point.x} ${point.y}`)
+          .join(" ")}`;
 
         drawnLines.push(
           <path
             key={`line${i}`}
             d={pathData}
             fill="transparent"
-            stroke={i === selectedLine ? 'red' : 'black'}
+            stroke={i === selectedLine ? "red" : "black"}
             strokeWidth={3}
             markerEnd="url(#arrow)"
           />
         );
 
+        drawnLines.push(
+          // <circle
+          //   key={`startPoint${i}`}
+          //   cx={linePoints[0].x}
+          //   cy={linePoints[0].y}
+          //   r={3}
+          //   fill="red"
+          // />
+          <g key={`lineGroup${i}`}>
+            <rect
+              x={linePoints[0].x - 48 / 2}
+              y={linePoints[0].y - 48 / 2}
+              width={48}
+              height={48}
+              fill="transparent"
+              stroke={i === selectedLine ? "red" : "transparent"}
+              strokeWidth={2}
+              rx={4}
+            />
+            <image
+              href="https://freesvg.org/img/1532452918.png"
+              x={linePoints[0].x - 48 / 2}
+              y={linePoints[0].y - 48 / 2}
+              width={48}
+              height={48}
+            />
+          </g>
+        );
       }
-      drawnLines.push(
-        <circle
-          key={`startPoint${i}`}
-          cx={linePoints[0].x}
-          cy={linePoints[0].y}
-          r={3}
-          fill="red"
-        />
-      );
-
-
+      
     }
     return drawnLines;
   };
@@ -237,20 +383,80 @@ export default function App() {
   };
 
   return (
-    <div style={{ display: 'flex', marginTop: 10, width: '100%' }}>
-
-      <div style={{ display: 'flex', alignItems: 'start', marginRight: 10 }}>
-        <button onClick={handleDrawButtonClick}>Çiz</button>
+    <div
+      style={{
+        display: "flex",
+        marginTop: 10,
+        width: "100%",
+        height: "100%",
+        justifyContent: "center",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "start",
+          marginRight: 10,
+        }}
+      >
+        <button
+          onClick={handleDrawButtonClick}
+          style={{ width: "100%", marginTop: 0 }}
+        >
+          Çiz
+        </button>
         {/* <button onClick={handleEditButtonClick}>Düzenle</button> */}
-        <button onClick={handleResizeButtonClick}>Büyült/Küçült</button>
-        <button onClick={handleMoveButtonClick}>Taşı</button>
-        {selectedLine !== null ? (<button onClick={handleDeleteButtonClick} >Sil</button>) : (<button onClick={handleDeleteButtonClick} disabled>Sil</button>)}
+        <button
+          onClick={handleResizeButtonClick}
+          style={{ width: "100%", marginTop: 10 }}
+        >
+          Büyült/Küçült
+        </button>
+        <button
+          onClick={handleMoveButtonClick}
+          style={{ width: "100%", marginTop: 10 }}
+        >
+          Taşı
+        </button>
+        <button
+          onClick={() => handlePedestrianButtonCLick()}
+          style={{ width: "100%", marginTop: 10 }}
+        >
+          Yaya Ekle
+        </button>
+
+        <button
+          onClick={() => handlePhaseButtonClick()}
+          style={{ width: "100%", marginTop: 10 }}
+        >
+          Faz Ekle
+        </button>
+
+        {selectedLine !== null ? (
+          <button
+            onClick={handleDeleteButtonClick}
+            style={{ width: "100%", marginTop: 10 }}
+          >
+            Sil
+          </button>
+        ) : (
+          <button
+            onClick={handleDeleteButtonClick}
+            disabled
+            style={{ width: "100%", marginTop: 10 }}
+          >
+            Sil
+          </button>
+        )}
       </div>
 
       <div
         style={{
-          height: '100%',
-          display: 'flex',
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
         }}
         onKeyDown={handleKeyDown}
         tabIndex={0}
@@ -259,12 +465,15 @@ export default function App() {
       >
         <svg
           style={{
-            border: '1px solid gray',
-            textAlign: 'center',
-            alignSelf: 'center',
-            display: 'inline-block',
-            cursor: isMoveMode ? 'all-scroll' : isResizeMode ? 'ne-resize' : 'crosshair',
-
+            border: "1px solid gray",
+            textAlign: "center",
+            alignSelf: "center",
+            display: "inline-block",
+            cursor: isMoveMode
+              ? "all-scroll"
+              : isResizeMode
+              ? "ne-resize"
+              : "crosshair",
           }}
           onMouseLeave={handleMouseLeave}
           onMouseDown={handleMouseDown}
@@ -288,34 +497,55 @@ export default function App() {
           {drawLines()}
 
           {points.map((point, index) => (
-            <circle key={`point${index}`} cx={point.x} cy={point.y} r={3} fill="red" />
+            <circle
+              key={`point${index}`}
+              cx={point.x}
+              cy={point.y}
+              r={3}
+              fill="red"
+            />
           ))}
         </svg>
-
       </div>
 
       <div style={{ marginLeft: 10 }}>
-        <h2>Çizgiler</h2>
-        <ul >
+        <h2>Gruplar</h2>
+        <ul>
           {lines.map((line, index) => (
             <li
               key={`line${index}`}
               onClick={() => {
                 handleListClick(index);
                 handleSelectLine(line.points[0].x, line.points[0].y);
-                setEditMode(true)
+                setEditMode(true);
               }}
               style={{
-                color: index === selectedLineIndex ? 'red' : 'black',
-                cursor: 'pointer',
+                color: index === selectedLineIndex ? "red" : "black",
+                cursor: "pointer",
               }}
             >
-              {index + 1}. Line
+              {index + 1}. Grup
+            </li>
+          ))}
+        </ul>
+        <h2>Fazlar</h2>
+        <ul>
+          {phases.map((phase, index) => (
+            <li
+              key={`phase${index}`}
+              onClick={() => {
+                setSelectedPhaseIndex(index);          
+              }}
+              style={{
+                color: index === selectedPhaseIndex ? "red" : "black",
+                cursor: "pointer",
+              }}
+            >
+              {phase.name}
             </li>
           ))}
         </ul>
       </div>
-
-    </div >
+    </div>
   );
 }
